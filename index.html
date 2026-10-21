@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>2do Parcial — Derecho</title>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#12162a; --surface:#1a1f38; --surface2:#222844; --border:#2e3560;
+  --accent:#8b7cf8; --accent2:#6ec6f5; --green:#5ce8a0; --red:#f47f7f;
+  --yellow:#fbbf24; --text:#eef0ff; --muted:#8890bb; --dim:#4a5280;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:inherit;margin:0;padding:0;}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+html,body{background:var(--bg);color:var(--text);font-family:'Atkinson Hyperlegible',sans-serif;font-size:17px;line-height:1.7;min-height:100%;}
+
+/* TOPBAR */
+.topbar{
+  position:sticky;top:env(safe-area-inset-top,0px);z-index:50;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:14px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+}
+.topbar-title{font-size:1rem;font-weight:700;flex:1;min-width:160px;}
+.topbar-sub{font-size:0.78rem;color:var(--muted);display:block;font-weight:400;}
+.pill-ctr{background:var(--surface2);border:1px solid var(--border);border-radius:999px;padding:4px 14px;font-size:0.82rem;color:var(--muted);white-space:nowrap;}
+.pill-ctr span{color:var(--accent);font-weight:700;}
+.progress-track{width:100%;height:4px;background:var(--border);border-radius:999px;overflow:hidden;}
+.progress-fill{height:100%;background:var(--accent);border-radius:999px;transition:width .4s ease;width:0%;}
+
+/* NAV */
+.nav-pills{display:flex;gap:8px;padding:14px 20px 0;overflow-x:auto;scrollbar-width:none;flex-wrap:wrap;}
+.nav-pills::-webkit-scrollbar{display:none;}
+.nav-pill{padding:7px 16px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:inherit;font-size:0.83rem;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s,border-color .15s;}
+.nav-pill.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700;}
+.nav-pill:hover:not(.active){border-color:var(--accent);color:var(--text);}
+
+/* WRAP */
+.wrap{max-width:680px;margin:0 auto;padding:28px 20px 100px;}
+
+/* SINGLE QUESTION VIEW */
+.q-stage{display:flex;flex-direction:column;gap:0;}
+
+/* STEP INDICATOR */
+.step-row{display:flex;align-items:center;gap:10px;margin-bottom:20px;}
+.step-dots{display:flex;gap:5px;flex-wrap:wrap;}
+.step-dot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:background .3s,transform .3s;}
+.step-dot.done{background:var(--green);}
+.step-dot.current{background:var(--accent);transform:scale(1.4);}
+.step-dot.wrong{background:var(--red);}
+.step-label{font-size:0.78rem;color:var(--muted);white-space:nowrap;}
+
+/* QUESTION CARD */
+.q-card{
+  background:var(--surface);border:1.5px solid var(--border);border-radius:20px;
+  padding:28px 24px;display:flex;flex-direction:column;gap:20px;
+  animation:fadeUp .3s ease;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+
+.q-type-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:0.72rem;font-weight:700;letter-spacing:.06em;
+  padding:3px 10px;border-radius:999px;width:fit-content;
+}
+.q-type-badge.mc{background:rgba(139,124,248,.15);color:var(--accent);border:1px solid rgba(139,124,248,.3);}
+.q-type-badge.open{background:rgba(110,198,245,.12);color:var(--accent2);border:1px solid rgba(110,198,245,.25);}
+.q-type-badge.multi{background:rgba(251,191,36,.1);color:var(--yellow);border:1px solid rgba(251,191,36,.25);}
+.q-type-badge.vf{background:rgba(92,232,160,.1);color:var(--green);border:1px solid rgba(92,232,160,.25);}
+
+.q-freq-tag{
+  display:inline-block;margin-top:4px;
+  font-size:0.72rem;padding:2px 9px;border-radius:999px;
+  background:rgba(92,232,160,.1);color:var(--green);border:1px solid rgba(92,232,160,.2);
+}
+.q-freq-tag.mid{background:rgba(139,124,248,.12);color:var(--accent);border-color:rgba(139,124,248,.2);}
+
+.q-num{font-size:0.8rem;color:var(--dim);font-weight:700;}
+.q-text{font-size:1.05rem;line-height:1.65;color:var(--text);font-weight:700;}
+
+/* OPTIONS */
+.opts{display:flex;flex-direction:column;gap:9px;}
+.opt{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:13px 16px;border-radius:12px;border:1.5px solid var(--border);
+  background:var(--surface2);cursor:pointer;font-family:inherit;
+  font-size:0.92rem;color:var(--text);line-height:1.55;text-align:left;width:100%;
+  transition:background .12s,border-color .12s;
+}
+.opt:hover:not(:disabled){border-color:var(--accent);background:rgba(139,124,248,.1);}
+.opt:disabled{cursor:default;}
+.opt.correct{background:rgba(92,232,160,.13);border-color:var(--green);color:var(--green);}
+.opt.wrong{background:rgba(244,127,127,.12);border-color:var(--red);color:var(--red);}
+.opt.show-correct{background:rgba(92,232,160,.08);border-color:rgba(92,232,160,.4);color:var(--green);}
+.opt.selected-multi{background:rgba(139,124,248,.13);border-color:var(--accent);color:var(--accent);}
+.opt-let{flex-shrink:0;font-size:0.75rem;font-weight:700;color:var(--muted);margin-top:3px;}
+.opt.correct .opt-let,.opt.wrong .opt-let,.opt.show-correct .opt-let{color:inherit;}
+
+/* FEEDBACK BOX */
+.fb-box{
+  padding:14px 16px;border-radius:12px;font-size:0.9rem;line-height:1.6;
+  display:none;animation:fadeUp .2s ease;
+}
+.fb-box.show{display:block;}
+.fb-box.ok{background:rgba(92,232,160,.12);color:var(--green);border:1px solid rgba(92,232,160,.25);}
+.fb-box.bad{background:rgba(244,127,127,.1);color:var(--red);border:1px solid rgba(244,127,127,.2);}
+
+/* OPEN QUESTION TEXTAREA */
+.open-area{
+  width:100%;min-height:130px;
+  background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;
+  padding:14px 16px;font-family:'Atkinson Hyperlegible',sans-serif;
+  font-size:0.92rem;line-height:1.65;color:var(--text);resize:vertical;
+  transition:border-color .2s;
+  outline:none;
+}
+.open-area:focus{border-color:var(--accent);}
+.open-area::placeholder{color:var(--dim);}
+
+.reveal-btn{
+  align-self:flex-start;padding:9px 18px;
+  background:transparent;border:1.5px solid var(--accent2);color:var(--accent2);
+  border-radius:10px;font-family:inherit;font-size:0.85rem;cursor:pointer;
+  transition:background .12s;
+}
+.reveal-btn:hover{background:rgba(110,198,245,.1);}
+
+.key-box{
+  background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+  padding:16px 18px;font-size:0.88rem;line-height:1.7;color:var(--muted);
+  display:none;animation:fadeUp .25s ease;
+}
+.key-box.show{display:block;}
+.key-box strong{color:var(--text);}
+.key-box ul{margin:8px 0 8px 16px;}
+.key-box li{margin-bottom:5px;}
+
+/* CONFIRM MULTI */
+.confirm-btn{
+  align-self:flex-start;padding:10px 22px;
+  background:var(--accent);color:#fff;border:none;border-radius:10px;
+  font-family:inherit;font-size:0.87rem;font-weight:700;cursor:pointer;
+  transition:opacity .15s;
+}
+.confirm-btn:hover{opacity:.85;}
+.confirm-btn:disabled{opacity:.35;cursor:default;}
+.multi-note{font-size:0.78rem;color:var(--muted);}
+
+/* NEXT BUTTON */
+.next-btn{
+  padding:14px 28px;background:var(--accent);color:#fff;border:none;
+  border-radius:12px;font-family:inherit;font-size:0.97rem;font-weight:700;
+  cursor:pointer;width:100%;transition:opacity .15s,transform .1s;
+  display:none;margin-top:4px;
+}
+.next-btn:hover{opacity:.88;transform:translateY(-1px);}
+.next-btn.show{display:block;animation:fadeUp .25s ease;}
+
+/* DONE SCREEN */
+.done-screen{display:none;text-align:center;padding:48px 24px;}
+.done-screen.show{display:block;animation:fadeUp .35s ease;}
+.done-big{font-size:3.8rem;font-weight:700;color:var(--accent);line-height:1;margin-bottom:8px;}
+.done-sub{font-size:0.88rem;color:var(--muted);margin-bottom:16px;}
+.done-msg{font-size:1rem;color:var(--text);line-height:1.6;margin-bottom:32px;max-width:400px;margin-left:auto;margin-right:auto;}
+.done-restart{padding:13px 32px;background:var(--accent);color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:0.97rem;font-weight:700;cursor:pointer;}
+
+/* CHEAT SHEET */
+.cheat-section{margin-bottom:28px;}
+.cheat-title{font-size:0.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:12px;}
+.cheat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:10px;overflow:hidden;}
+.cheat-head{display:flex;align-items:center;gap:10px;padding:14px 18px;cursor:pointer;user-select:none;}
+.cheat-emoji{font-size:1.1rem;flex-shrink:0;}
+.cheat-label{font-size:0.93rem;font-weight:700;color:var(--text);flex:1;}
+.cheat-arr{color:var(--dim);font-size:0.8rem;transition:transform .2s;}
+.cheat-arr.open{transform:rotate(90deg);}
+.cheat-body{display:none;padding:0 18px 16px;font-size:0.88rem;line-height:1.7;color:var(--muted);}
+.cheat-body.open{display:block;}
+.cheat-body strong{color:var(--text);}
+.cheat-body ul{margin:6px 0 10px 16px;}
+.cheat-body li{margin-bottom:5px;}
+.pill{display:inline-block;background:rgba(139,124,248,.15);color:var(--accent);border-radius:6px;padding:1px 8px;font-size:0.75rem;font-weight:700;margin-right:4px;}
+.pill.g{background:rgba(92,232,160,.12);color:var(--green);}
+
+@media(max-width:480px){
+  html{font-size:16px;}
+  .topbar{padding:12px 14px;}
+  .wrap{padding:20px 14px 100px;}
+  .q-card{padding:22px 18px;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title">
+    2do Parcial — Derecho
+    <span class="topbar-sub">Basado en parciales reales de múltiples comisiones</span>
+  </div>
+  <div class="pill-ctr"><span id="doneCount">0</span> / <span id="totalCount">22</span></div>
+  <div style="width:100%"><div class="progress-track"><div class="progress-fill" id="pFill"></div></div></div>
+</div>
+
+<div class="nav-pills">
+  <button class="nav-pill active" onclick="showTab('practica',this)">Práctica</button>
+  <button class="nav-pill" onclick="showTab('cheat',this)">Resumen rápido</button>
+</div>
+
+<!-- ══ PRÁCTICA ══ -->
+<div id="tabPractica" class="wrap">
+  <div class="step-row">
+    <div class="step-dots" id="stepDots"></div>
+    <div class="step-label" id="stepLabel">Pregunta 1 de 22</div>
+  </div>
+  <div class="q-stage" id="qStage"></div>
+  <div class="done-screen" id="doneScreen">
+    <div class="done-big" id="doneScore"></div>
+    <div class="done-sub" id="doneSub"></div>
+    <div class="done-msg" id="doneMsg"></div>
+    <button class="done-restart" onclick="restart()">Volver a empezar</button>
+  </div>
+</div>
+
+<!-- ══ RESUMEN ══ -->
+<div id="tabCheat" class="wrap" style="display:none">
+  <div class="cheat-section">
+    <div class="cheat-title">Contratos — lo que más toman</div>
+    <div class="cheat-card">
+      <div class="cheat-head" onclick="toggleCheat(this)"><span class="cheat-emoji">📋</span><span class="cheat-label">5 elementos del contrato</span><span class="cheat-arr">›</span></div>
+      <div class="cheat-body"><span class="pill">1</span><strong>Capacidad</strong> — poder contratar legalmente<br><span class="pill">2</span><strong>Consentimiento</strong> — acuerdo libre, sin vicios<br><span class="pill">3</span><strong>Objeto</strong> — lícito, posible, determinado (dar/hacer/no hacer)<br><span class="pill">4</span><strong>Causa</strong> — finalidad económico-social<br><span class="pill">5</span><strong>Forma</strong> — cómo se exterioriza. Regla: libertad de formas (art. 1015)</div>
+    </div>
+    <div class="cheat-card">
+      <div class="cheat-head" onclick="toggleCheat(this)"><span class="cheat-emoji">🔄</span><span class="cheat-label">Rescisión vs. Resolución</span><span class="cheat-arr">›</span></div>
+      <div class="cheat-body"><strong>Rescisión:</strong> las partes deciden terminar. Sin efecto retroactivo.<br><strong>Resolución:</strong> hecho posterior (incumplimiento, caso fortuito). Con efecto retroactivo.<br><br>Truco: rescisión = decisión de las partes desde adentro. Resolución = hecho externo nuevo.</div>
+    </div>
+    <div class="cheat-card">
+      <div class="cheat-head" onclick="toggleCheat(this)"><span class="cheat-emoji">🚫</span><span class="cheat-label">Contratos prohibidos — todos los tipos</span><span class="cheat-arr">›</span></div>
+      <div class="cheat-body"><ul><li><strong>Entre cónyuges</strong> en régimen de comunidad</li><li><strong>Abogados</strong> sobre bienes litigiosos de sus causas</li><li><strong>Jueces</strong> sobre bienes de procesos donde intervienen</li><li><strong>Funcionarios públicos</strong> sobre bienes que administran</li><li><strong>Sin capacidad</strong> (menores sin autorización)</li><li><strong>Objeto ilícito</strong> (ej: venta de drogas)</li><li><strong>Causa ilícita</strong> (ej: contratar a alguien para dañar)</li><li><strong>Objeto imposible</strong></li></ul>Dar un ejemplo por cada tipo — la enunciación sola no suma puntos.</div>
+    </div>
+    <div class="cheat-card">
+      <div class="cheat-head" onclick="toggleCheat(this)"><span class="cheat-emoji">📝</span><span class="cheat-label">Contratos por adhesión</span><span class="cheat-arr">›</span></div>
+      <div class="cheat-body">Cláusulas predispuestas por una parte. La otra solo acepta o rechaza. Las cláusulas abusivas se tienen por no escritas. Siempre se interpreta a favor del adherente.</div>
+    </div>
+  </div>
+  <div class="cheat-section">
+    <div class="cheat-title">Sociedades</div>
+    <div class="cheat-card">
+      <div class="cheat-head" onclick="toggleCheat(this)"><span class="cheat-emoji">🏗️</span><span class="cheat-label">SH vs SRL vs SA — comparación rápida</span><span class="cheat-arr">›</span></div>
+      <div class="cheat-body">
+        <strong>SH:</strong> informal, sin mínimo, todos administran, solo AFIP. ✅ Sin costos ❌ Responsabilidad ilimitada<br><br>
+        <strong>SRL:</strong> cuotas, máx 50 socios, gerente, IGJ, 99 años. ✅ Resp limitada, flexible ❌ Formalidades<br><br>
+        <strong>SA:</strong> acciones, mín $30M, Directorio + Sindicatura, IGJ, 99 años. ✅ Inversores, transferible ❌ Cara y compleja
+      </div>
+    </div>
+  </div>
+  <div class="cheat-section">
+    <div class="cheat-title">Ley 24.240 — Defensa del Consumidor</div>
+    <div class="cheat-card">
+      <div class="cheat-head" onclick="toggleCheat(this)"><span class="cheat-emoji">👤</span><span class="cheat-label">¿Quién es consumidor?</span><span class="cheat-arr">›</span></div>
+      <div class="cheat-body">Quien adquiere como <strong>destinatario final</strong>. No es consumidor quien incorpora el bien a una cadena productiva.</div>
+    </div>
+    <div class="cheat-card">
+      <div class="cheat-head" onclick="toggleCheat(this)"><span class="cheat-emoji">🛡️</span><span class="cheat-label">Garantía</span><span class="cheat-arr">›</span></div>
+      <div class="cheat-body"><ul><li>Nuevo: <strong>6 meses</strong> mínimo</li><li>Usado: <strong>3 meses</strong> mínimo</li><li>Tiempo en reparación se <strong>suma</strong> al plazo</li><li>Es irrenunciable — ningún contrato puede reducirla</li><li>Transporte: lo paga el <strong>responsable de la garantía</strong></li><li>Responsabilidad <strong>solidaria</strong>: fabricante + importador + vendedor</li></ul></div>
+    </div>
+  </div>
+  <div class="cheat-section">
+    <div class="cheat-title">Derecho Laboral</div>
+    <div class="cheat-card">
+      <div class="cheat-head" onclick="toggleCheat(this)"><span class="cheat-emoji">📅</span><span class="cheat-label">¿Qué contrato uso?</span><span class="cheat-arr">›</span></div>
+      <div class="cheat-body">
+        <strong>No sé cuándo vuelve / sin fecha cierta:</strong> Tiempo indeterminado a tiempo parcial<br>
+        <strong>Vacaciones, fecha de fin conocida:</strong> Plazo fijo<br>
+        <strong>Reemplazo por enfermedad / ausencia indeterminada:</strong> Eventual<br><br>
+        Eventual = no sé cuándo termina. Plazo fijo = sé exactamente la fecha de fin.
+      </div>
+    </div>
+    <div class="cheat-card">
+      <div class="cheat-head" onclick="toggleCheat(this)"><span class="cheat-emoji">🔚</span><span class="cheat-label">Extinción laboral — causas válidas</span><span class="cheat-arr">›</span></div>
+      <div class="cheat-body">
+        <span class="pill g">✅ Sí:</span> Renuncia · Despido directo (con o sin causa) · Despido indirecto · Jubilación · Incapacidad total · Acuerdo · Quiebra · Muerte del empleador<br><br>
+        <span class="pill">❌ No:</span> COVID-19 · Factor de atribución · Muerte del accionista mayoritario
+      </div>
+    </div>
+    <div class="cheat-card">
+      <div class="cheat-head" onclick="toggleCheat(this)"><span class="cheat-emoji">⚠️</span><span class="cheat-label">Trampa: principio de continuidad</span><span class="cheat-arr">›</span></div>
+      <div class="cheat-body"><strong>No significa</strong> que en plazo fijo no podés despedir antes. Significa: ante duda sobre si hay contrato, se presume <strong>tiempo indeterminado</strong>.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// PREGUNTAS
+// ══════════════════════════════════════════
+const questions = [
+  {
+    id:'q1', type:'open',
+    topic:'📄 Contratos',
+    freq:'aparece en casi todos los parciales', freqLevel:'high',
+    text:'¿Cuáles son los 5 elementos esenciales que debe tener un contrato para ser válido?',
+    hint:`<strong>Los 5 elementos son:</strong>
+    <ul>
+      <li><strong>Capacidad</strong> — las partes deben poder contratar legalmente</li>
+      <li><strong>Consentimiento</strong> — acuerdo libre, sin vicios (error, dolo, violencia)</li>
+      <li><strong>Objeto</strong> — la prestación: dar, hacer o no hacer algo. Lícito, posible, determinado</li>
+      <li><strong>Causa</strong> — finalidad económico-social que justifica el contrato</li>
+      <li><strong>Forma</strong> — cómo se exterioriza la voluntad. Regla: libertad de formas (art. 1015)</li>
+    </ul>`
+  },
+  {
+    id:'q2', type:'mc',
+    topic:'📄 Contratos',
+    freq:'aparece seguido', freqLevel:'mid',
+    text:'¿Cuál es la diferencia entre un contrato oneroso y uno gratuito?',
+    opts:[
+      {l:'a', t:'En el oneroso solo una parte se beneficia; en el gratuito ambas'},
+      {l:'b', t:'En el oneroso ambas partes tienen beneficio y sacrificio; en el gratuito solo una parte se beneficia sin dar nada a cambio'},
+      {l:'c', t:'El oneroso implica obligaciones escritas; el gratuito puede ser verbal'},
+      {l:'d', t:'El oneroso es bilateral; el gratuito siempre es unilateral'},
+    ],
+    correct:'b',
+    feedback:'Correcto. Oneroso = beneficio y sacrificio para ambas. Gratuito = una sola parte obtiene ventaja (ej: donación).'
+  },
+  {
+    id:'q3', type:'open',
+    topic:'📄 Contratos',
+    freq:'aparece en casi todos los parciales', freqLevel:'high',
+    text:'Diferencia entre contrato unilateral y bilateral. ¿Qué consecuencias trae cada uno?',
+    hint:`<strong>Unilateral:</strong> solo una parte se obliga. Ejemplo: donación. Sin consecuencias especiales.<br><br>
+    <strong>Bilateral:</strong> ambas partes se obligan recíprocamente. Ejemplo: compraventa.<br>
+    Consecuencias exclusivas del bilateral:
+    <ul>
+      <li><strong>Doble ejemplar</strong> — tantas copias como partes</li>
+      <li><strong>Excepción de incumplimiento</strong> (art. 1031) — si vos no cumplís, yo tampoco tengo que cumplir</li>
+      <li><strong>Pacto comisorio</strong> (art. 1083) — facultad de resolver por incumplimiento</li>
+    </ul>`
+  },
+  {
+    id:'q4', type:'mc',
+    topic:'📄 Contratos',
+    freq:'apareció en comisión lunes 8am', freqLevel:'mid',
+    text:'¿Cuándo hay un vicio de lesión en un contrato?',
+    opts:[
+      {l:'a', t:'Cuando una parte miente sobre el precio'},
+      {l:'b', t:'Cuando el contrato no tiene forma escrita'},
+      {l:'c', t:'Cuando hay desproporción evidente y una parte se aprovecha de la necesidad, ligereza o inexperiencia de la otra'},
+      {l:'d', t:'Cuando el objeto del contrato es ilícito'},
+    ],
+    correct:'c',
+    feedback:'Correcto. Lesión = desproporción + aprovechamiento de la vulnerabilidad de la otra parte (art. 332 CCyCN).'
+  },
+  {
+    id:'q5', type:'open',
+    topic:'📄 Contratos',
+    freq:'aparece en absolutamente todos los parciales', freqLevel:'high',
+    text:'Inventá ejemplos de contratos prohibidos por el derecho, uno por cada tipo de prohibición.',
+    hint:`<ul>
+      <li><strong>Entre cónyuges:</strong> "Quiero venderle mi auto a mi pareja" → no se puede</li>
+      <li><strong>Abogados:</strong> "Mi abogado me quiere comprar el departamento que está en el juicio que él lleva" → no se puede</li>
+      <li><strong>Jueces:</strong> "El juez quiere comprar el auto secuestrado del imputado de su causa" → no se puede</li>
+      <li><strong>Funcionarios:</strong> "El intendente quiere comprar un terreno municipal que él administra" → no se puede</li>
+      <li><strong>Sin capacidad:</strong> "Mi hermano de 15 años quiere vender su moto sin autorización de mis padres" → no puede</li>
+      <li><strong>Objeto ilícito:</strong> "Contrato para vender drogas" → nulo</li>
+      <li><strong>Causa ilícita:</strong> "Contrato para contratar a alguien que le pegue a mi vecino" → nulo</li>
+      <li><strong>Objeto imposible:</strong> "Me comprometo a entregarte la luna mañana" → imposible</li>
+    </ul>`
+  },
+  {
+    id:'q6', type:'open',
+    topic:'📄 Contratos',
+    freq:'aparece en casi todos los parciales', freqLevel:'high',
+    text:'Diferencia entre rescisión y resolución contractual. Dá dos ejemplos de cada una.',
+    hint:`<strong>Rescisión:</strong> extinción por voluntad de las partes. Sin efecto retroactivo.<br>
+    Ejemplo bilateral: "Mi proveedor y yo acordamos terminar el contrato antes de tiempo"<br>
+    Ejemplo unilateral: "Me fui del alquiler anticipadamente"<br><br>
+    <strong>Resolución:</strong> extinción por hecho sobreviniente (incumplimiento, caso fortuito). Con efecto retroactivo.<br>
+    Ejemplo incumplimiento: "El jugador nunca fue a entrenar, el club resuelve el contrato"<br>
+    Ejemplo fortuito: "Contraté entrega de soja pero hubo sequía total"<br><br>
+    Clave: en rescisión el motivo está en las partes. En resolución viene de un hecho nuevo externo.`
+  },
+  {
+    id:'q7', type:'mc',
+    topic:'📄 Contratos',
+    freq:'apareció en comisión lunes 8am', freqLevel:'mid',
+    text:'¿Qué se transmite en un contrato de locación de cosa?',
+    opts:[
+      {l:'a', t:'La propiedad de la cosa por tiempo determinado'},
+      {l:'b', t:'La posesión definitiva a cambio de un precio'},
+      {l:'c', t:'El derecho al uso y goce temporario de la cosa a cambio de un precio en dinero'},
+      {l:'d', t:'La tenencia y el dominio de la cosa durante el plazo pactado'},
+    ],
+    correct:'c',
+    feedback:'Correcto. Locación = uso y goce TEMPORARIO + precio en DINERO. No se transfiere la propiedad.'
+  },
+  {
+    id:'q8', type:'mc',
+    topic:'📄 Contratos',
+    freq:'aparece seguido', freqLevel:'mid',
+    text:'¿Qué enunciado sobre los contratos por adhesión es correcto?',
+    opts:[
+      {l:'a', t:'Son contratos donde ambas partes negocian libremente todas las cláusulas'},
+      {l:'b', t:'Son contratos con cláusulas predispuestas por una parte; la otra solo acepta o rechaza, sin poder modificarlas'},
+      {l:'c', t:'Son contratos que siempre implican abuso y son nulos de pleno derecho'},
+      {l:'d', t:'Son contratos que no pueden tener cláusulas abusivas porque están supervisados por el Estado'},
+    ],
+    correct:'b',
+    feedback:'Correcto. Adhesión = una parte impone las cláusulas, la otra solo adhiere. Las abusivas se tienen por no escritas.'
+  },
+  {
+    id:'q9', type:'open',
+    topic:'🏢 Sociedades',
+    freq:'aparece en el 100% de los parciales', freqLevel:'high',
+    text:'Inventá un emprendimiento y analizá SH, SRL y SA aplicadas a ese ejemplo (capital, socios, administración, duración, inscripción, ventajas y desventajas).',
+    hint:`<strong>Ejemplo:</strong> somos 3 amigos que queremos vender ropa de diseño propio.<br><br>
+    <strong>Sociedad de Hecho (SH)</strong><br>
+    Capital: informal. Socios: sin límite. Administración: todos. Inscripción: solo AFIP.<br>
+    ✅ Sin costos, fácil arrancar<br>
+    ❌ Responsabilidad ilimitada — responden con su patrimonio personal<br><br>
+    <strong>SRL</strong><br>
+    Capital: cuotas. Máx. 50 socios. Administración: gerente. Inscripción: IGJ. 99 años.<br>
+    ✅ Responsabilidad limitada. Ideal para PYME.<br>
+    ❌ Costo de constitución y formalidades.<br><br>
+    <strong>SA</strong><br>
+    Capital: acciones, mín. $30M. Sin límite socios. Directorio + Sindicatura. IGJ. 99 años.<br>
+    ✅ Fácil conseguir inversores, acciones transferibles<br>
+    ❌ Cara y compleja. Excesiva para 3 amigos.<br><br>
+    <strong>Conclusión:</strong> para este emprendimiento la SRL es la mejor opción.`
+  },
+  {
+    id:'q10', type:'mc',
+    topic:'⚖️ Defensa del Consumidor',
+    freq:'aparece en casi todos los parciales', freqLevel:'high',
+    text:'Comprás un televisor nuevo y el contrato dice que la garantía es de 1 mes. A los 5 meses deja de funcionar. ¿Podés reclamar por la Ley 24.240?',
+    opts:[
+      {l:'a', t:'Sí — la garantía mínima legal es de 6 meses. La cláusula es nula porque no puede renunciarse a la garantía legal'},
+      {l:'b', t:'No — firmaste que era 1 mes y ya vencieron'},
+      {l:'c', t:'Depende de si el defecto era visible al comprar'},
+      {l:'d', t:'Solo si el vendedor también lo acepta'},
+    ],
+    correct:'a',
+    feedback:'Correcto. La garantía legal de 6 meses es irrenunciable. Ningún contrato puede reducirla.'
+  },
+  {
+    id:'q11', type:'mc',
+    topic:'⚖️ Defensa del Consumidor',
+    freq:'aparece en casi todos los parciales', freqLevel:'high',
+    text:'Tenés una librería y comprás una computadora para la contabilidad del negocio. A los 3 meses falla. ¿Te protege la Ley 24.240?',
+    opts:[
+      {l:'a', t:'Sí — la usás como destinatario final para tu negocio, no la integrás a una cadena de producción'},
+      {l:'b', t:'No — solo las personas físicas que compran para uso personal están protegidas'},
+      {l:'c', t:'No — cualquier compra para un negocio queda fuera de la ley'},
+      {l:'d', t:'Solo si el valor supera el salario mínimo'},
+    ],
+    correct:'a',
+    feedback:'Correcto. La librería es destinataria final de la computadora — no la incorpora a una cadena productiva. Sí es consumidora.'
+  },
+  {
+    id:'q12', type:'mc',
+    topic:'⚖️ Defensa del Consumidor',
+    freq:'aparece en casi todos los parciales', freqLevel:'high',
+    text:'Una empresa metalúrgica compra un robot soldador para su línea de producción. A los 3 meses falla. ¿La Ley 24.240 la protege?',
+    opts:[
+      {l:'a', t:'Sí — tiene garantía de 6 meses como cualquier producto'},
+      {l:'b', t:'No — el robot se incorpora a la cadena productiva, no es consumidor final'},
+      {l:'c', t:'Sí — toda empresa puede reclamar garantía por productos defectuosos'},
+      {l:'d', t:'Depende del monto del robot'},
+    ],
+    correct:'b',
+    feedback:'Correcto. El robot es parte de la cadena productiva — la empresa no es consumidor final en este caso.'
+  },
+  {
+    id:'q13', type:'vf',
+    topic:'⚖️ Defensa del Consumidor',
+    freq:'apareció en parciales reales', freqLevel:'mid',
+    text:'La Ley 24.240 permite que, con la conformidad del consumidor, el proveedor establezca cláusulas abusivas.',
+    opts:[{l:'v',t:'Verdadero'},{l:'f',t:'Falso'}],
+    correct:'f',
+    feedback:'Falso. Las cláusulas abusivas son nulas de pleno derecho aunque el consumidor las firme. El consentimiento no las válida.'
+  },
+  {
+    id:'q14', type:'mc',
+    topic:'⚖️ Defensa del Consumidor',
+    freq:'apareció en múltiples parciales', freqLevel:'mid',
+    text:'Si la cosa en garantía debe trasladarse a fábrica o taller, ¿quién paga el transporte?',
+    opts:[
+      {l:'a', t:'El responsable de la garantía (fabricante/vendedor/importador)'},
+      {l:'b', t:'El consumidor'},
+      {l:'c', t:'Se divide entre ambos por partes iguales'},
+      {l:'d', t:'Depende de lo que diga el contrato'},
+    ],
+    correct:'a',
+    feedback:'Correcto. El costo de traslado siempre corre por cuenta del responsable de la garantía.'
+  },
+  {
+    id:'q15', type:'mc',
+    topic:'👷 Derecho Laboral',
+    freq:'aparece en casi todos los parciales', freqLevel:'high',
+    text:'Hoy es 21 de diciembre. Tu empleado de limpieza renunció para tomarse un año sabático. Necesitás alguien lunes, miércoles y viernes, 3 horas desde las 17hs. ¿Qué tipo de contrato usás?',
+    opts:[
+      {l:'a', t:'Eventual jornada completa'},
+      {l:'b', t:'Tiempo indeterminado a tiempo parcial'},
+      {l:'c', t:'Plazo fijo jornada completa'},
+      {l:'d', t:'Por temporada jornada completa'},
+    ],
+    correct:'b',
+    feedback:'Correcto. Sin fecha de regreso conocida y con horario reducido → tiempo indeterminado a tiempo parcial.'
+  },
+  {
+    id:'q16', type:'mc',
+    topic:'👷 Derecho Laboral',
+    freq:'aparece en casi todos los parciales', freqLevel:'high',
+    text:'Es 21 de diciembre. Tu empleado arranca vacaciones en 5 días (35 días por antigüedad). Necesitás reemplazo temporal. ¿Qué contrato usás?',
+    opts:[
+      {l:'a', t:'Eventual jornada completa'},
+      {l:'b', t:'Por temporada jornada completa'},
+      {l:'c', t:'Plazo fijo jornada completa'},
+      {l:'d', t:'Tiempo indeterminado a tiempo parcial'},
+    ],
+    correct:'c',
+    feedback:'Correcto. Las vacaciones tienen fecha de fin conocida (35 días) → plazo fijo. Sabés exactamente cuándo vuelve.'
+  },
+  {
+    id:'q17', type:'mc',
+    topic:'👷 Derecho Laboral',
+    freq:'aparece en casi todos los parciales', freqLevel:'high',
+    text:'Hoy es 21 de diciembre. Tu empleado de fábrica se lesionó la rodilla, tiene certificado de 30 días pero probablemente esté el verano entero fuera. ¿Qué contrato usás para el reemplazo?',
+    opts:[
+      {l:'a', t:'Plazo fijo jornada completa'},
+      {l:'b', t:'Eventual jornada completa'},
+      {l:'c', t:'Por temporada jornada completa'},
+      {l:'d', t:'Tiempo indeterminado a tiempo parcial'},
+    ],
+    correct:'b',
+    feedback:'Correcto. No sabés cuándo vuelve (la recuperación es incierta) → eventual. Depende de un hecho cuya duración no podés precisar.'
+  },
+  {
+    id:'q18', type:'multi',
+    topic:'👷 Derecho Laboral',
+    freq:'aparece en todos los parciales', freqLevel:'high',
+    text:'Elegí todas las causas válidas para considerar extinguida la relación laboral según la LCT.',
+    opts:[
+      {l:'a', t:'Por renuncia del trabajador'},
+      {l:'b', t:'Por COVID-19'},
+      {l:'c', t:'Por despido directo incausado'},
+      {l:'d', t:'Por factor de atribución'},
+      {l:'e', t:'Por despido directo con justa causa'},
+      {l:'f', t:'Por jubilación del trabajador'},
+      {l:'g', t:'Por muerte del accionista mayoritario'},
+      {l:'h', t:'Por quiebra del empleador'},
+      {l:'i', t:'Por incapacidad total del trabajador'},
+      {l:'j', t:'Por despido indirecto'},
+      {l:'k', t:'Por muerte del empleador'},
+      {l:'l', t:'Por acuerdo entre las partes'},
+    ],
+    correct:['a','c','e','f','h','i','j','k','l'],
+    feedback:'Las válidas son: renuncia, despido directo (con o sin causa), despido indirecto, jubilación, quiebra, incapacidad total, muerte del empleador, acuerdo. COVID-19, factor de atribución y muerte del accionista NO son causas.'
+  },
+  {
+    id:'q19', type:'vf',
+    topic:'👷 Derecho Laboral',
+    freq:'trampa clásica del parcial', freqLevel:'high',
+    text:'El principio de continuidad propone que en los contratos a plazo fijo no se puede despedir al trabajador antes del vencimiento del plazo.',
+    opts:[{l:'v',t:'Verdadero'},{l:'f',t:'Falso'}],
+    correct:'f',
+    feedback:'Falso. El principio de continuidad dice que ante duda sobre si existe contrato o sobre su duración, se presume tiempo indeterminado. No dice nada sobre despido anticipado en plazo fijo.'
+  },
+  {
+    id:'q20', type:'mc',
+    topic:'👷 Derecho Laboral',
+    freq:'apareció en el megadoc', freqLevel:'mid',
+    text:'¿Cuál es el modo natural de extinción de los contratos?',
+    opts:[
+      {l:'a', t:'La rescisión bilateral'},
+      {l:'b', t:'El vencimiento del plazo'},
+      {l:'c', t:'El cumplimiento (pago)'},
+      {l:'d', t:'La novación'},
+    ],
+    correct:'c',
+    feedback:'Correcto. Los contratos nacen para cumplirse — el cumplimiento es su "muerte natural".'
+  },
+  {
+    id:'q21', type:'mc',
+    topic:'📄 Contratos',
+    freq:'apareció en el megadoc', freqLevel:'mid',
+    text:'¿Qué enunciado sobre el objeto del contrato es correcto?',
+    opts:[
+      {l:'a', t:'Puede ser ilícito si las partes lo acuerdan expresamente'},
+      {l:'b', t:'Solo puede consistir en dar cosas materiales'},
+      {l:'c', t:'Debe ser lícito, posible y determinado o determinable, y puede consistir en dar, hacer o no hacer'},
+      {l:'d', t:'No es necesario que esté determinado al momento de firmar el contrato'},
+    ],
+    correct:'c',
+    feedback:'Correcto. Objeto = lícito + posible + determinado o determinable. Puede ser dar, hacer o no hacer.'
+  },
+  {
+    id:'q22', type:'mc',
+    topic:'📄 Contratos',
+    freq:'apareció en el megadoc', freqLevel:'mid',
+    text:'¿Un menor de 18 años puede adquirir una propiedad en Argentina?',
+    opts:[
+      {l:'a', t:'No, en ningún caso hasta los 18 años'},
+      {l:'b', t:'Como regla general solo a través de sus padres o tutor, salvo que tenga título habilitante para ejercer una profesión'},
+      {l:'c', t:'Sí, puede hacerlo libremente desde los 16 años'},
+      {l:'d', t:'Solo si tiene autorización del juez de menores'},
+    ],
+    correct:'b',
+    feedback:'Correcto. Los menores tienen capacidad progresiva. Como regla actúan a través de representantes legales.'
+  },
+];
+
+// ══════════════════════════════════════════
+// ESTADO
+// ══════════════════════════════════════════
+let current = 0;
+let results = [];
+let multiSelected = {};
+
+// ══════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════
+function buildDots(){
+  const d = document.getElementById('stepDots');
+  d.innerHTML = questions.map((q,i)=>`<div class="step-dot ${i===0?'current':''}" id="dot${i}"></div>`).join('');
+}
+
+function updateDots(){
+  questions.forEach((q,i)=>{
+    const dot = document.getElementById('dot'+i);
+    dot.className = 'step-dot';
+    if(i < current){
+      dot.classList.add(results[i]==='ok' ? 'done' : 'wrong');
+    } else if(i === current){
+      dot.classList.add('current');
+    }
+  });
+  document.getElementById('stepLabel').textContent = `Pregunta ${current+1} de ${questions.length}`;
+}
+
+function updateProgress(){
+  const done = current;
+  document.getElementById('doneCount').textContent = done;
+  document.getElementById('pFill').style.width = (done/questions.length*100)+'%';
+}
+
+function renderQuestion(idx){
+  if(idx >= questions.length){ showDone(); return; }
+  const q = questions[idx];
+  const stage = document.getElementById('qStage');
+  multiSelected[q.id] = new Set();
+
+  let inner = '';
+
+  // type badge
+  const typeMap = {mc:'Opción múltiple',open:'Desarrollo',multi:'Selección múltiple',vf:'Verdadero / Falso'};
+  const typeClass = {mc:'mc',open:'open',multi:'multi',vf:'vf'};
+  inner += `<div class="q-type-badge ${typeClass[q.type]}">${typeMap[q.type]}</div>`;
+  inner += `<div class="q-num">${q.topic}</div>`;
+  inner += `<div class="q-text">${q.text}</div>`;
+  inner += `<span class="q-freq-tag ${q.freqLevel==='high'?'':'mid'}">${q.freq}</span>`;
+
+  if(q.type==='mc' || q.type==='vf'){
+    inner += `<div class="opts" id="opts_${q.id}">`;
+    q.opts.forEach(o=>{
+      inner += `<button class="opt" id="opt_${q.id}_${o.l}" onclick="answerMC('${q.id}','${o.l}','${q.correct}')">
+        <span class="opt-let">${o.l.toUpperCase()}</span>${o.t}
+      </button>`;
+    });
+    inner += `</div>`;
+    inner += `<div class="fb-box" id="fb_${q.id}"></div>`;
+  }
+
+  if(q.type==='open'){
+    inner += `<textarea class="open-area" id="textarea_${q.id}" placeholder="Escribí tu respuesta acá..."></textarea>`;
+    inner += `<button class="reveal-btn" onclick="revealOpen('${q.id}')">Ver respuesta modelo</button>`;
+    inner += `<div class="key-box" id="key_${q.id}">${q.hint}</div>`;
+  }
+
+  if(q.type==='multi'){
+    inner += `<div class="multi-note">Seleccioná todas las que aplican, luego confirmá.</div>`;
+    inner += `<div class="opts" id="opts_${q.id}">`;
+    q.opts.forEach(o=>{
+      inner += `<button class="opt multi" id="opt_${q.id}_${o.l}" data-q="${q.id}" data-v="${o.l}" onclick="toggleMultiOpt(this)">
+        <span class="opt-let">${o.l.toUpperCase()}</span>${o.t}
+      </button>`;
+    });
+    inner += `</div>`;
+    inner += `<button class="confirm-btn" id="confirm_${q.id}" onclick="checkMulti('${q.id}')">Confirmar selección</button>`;
+    inner += `<div class="fb-box" id="fb_${q.id}"></div>`;
+  }
+
+  inner += `<button class="next-btn" id="next_${q.id}" onclick="nextQ()">
+    ${idx < questions.length-1 ? 'Siguiente pregunta →' : 'Ver resultados'}
+  </button>`;
+
+  stage.innerHTML = `<div class="q-card">${inner}</div>`;
+  updateDots();
+  updateProgress();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ══════════════════════════════════════════
+// RESPONDER
+// ══════════════════════════════════════════
+function answerMC(qId, chosen, correct){
+  const opts = document.querySelectorAll(`#opts_${qId} .opt`);
+  opts.forEach(btn=>{
+    btn.disabled=true;
+    const l = btn.querySelector('.opt-let').textContent.trim().toLowerCase();
+    if(l===correct) btn.classList.add('correct');
+    else if(l===chosen && chosen!==correct) btn.classList.add('wrong');
+  });
+  const ok = chosen===correct;
+  results[current] = ok?'ok':'bad';
+  const fb = document.getElementById('fb_'+qId);
+  const q = questions[current];
+  fb.textContent = ok ? '✓ '+q.feedback : '✗ '+q.feedback;
+  fb.className = 'fb-box show '+(ok?'ok':'bad');
+  showNext(qId);
+}
+
+function revealOpen(qId){
+  const key = document.getElementById('key_'+qId);
+  key.classList.toggle('show');
+  if(!results[current]) {
+    results[current] = 'seen';
+    showNext(qId);
+  }
+}
+
+function toggleMultiOpt(btn){
+  const q = btn.dataset.q;
+  const v = btn.dataset.v;
+  if(!multiSelected[q]) multiSelected[q] = new Set();
+  if(multiSelected[q].has(v)){
+    multiSelected[q].delete(v);
+    btn.classList.remove('selected-multi');
+  } else {
+    multiSelected[q].add(v);
+    btn.classList.add('selected-multi');
+  }
+}
+
+function checkMulti(qId){
+  const q = questions[current];
+  const sel = [...(multiSelected[qId]||new Set())];
+  const cSet = new Set(q.correct);
+  const sSet = new Set(sel);
+  const ok = q.correct.length===sel.length && q.correct.every(c=>sSet.has(c));
+  results[current] = ok?'ok':'bad';
+
+  document.querySelectorAll(`#opts_${qId} .opt`).forEach(btn=>{
+    btn.disabled=true;
+    btn.classList.remove('selected-multi');
+    const v = btn.dataset.v;
+    if(cSet.has(v)&&sSet.has(v)) btn.classList.add('correct');
+    else if(!cSet.has(v)&&sSet.has(v)) btn.classList.add('wrong');
+    else if(cSet.has(v)&&!sSet.has(v)) btn.classList.add('show-correct');
+  });
+  document.getElementById('confirm_'+qId).disabled=true;
+  const fb = document.getElementById('fb_'+qId);
+  fb.textContent = (ok?'✓ ':'✗ ')+q.feedback;
+  fb.className = 'fb-box show '+(ok?'ok':'bad');
+  showNext(qId);
+}
+
+function showNext(qId){
+  const btn = document.getElementById('next_'+qId);
+  btn.classList.add('show');
+}
+
+function nextQ(){
+  current++;
+  updateDots();
+  updateProgress();
+  if(current >= questions.length){ showDone(); return; }
+  renderQuestion(current);
+}
+
+// ══════════════════════════════════════════
+// DONE
+// ══════════════════════════════════════════
+function showDone(){
+  document.getElementById('qStage').innerHTML='';
+  document.getElementById('stepLabel').textContent='Terminaste 🎉';
+  const mc_results = results.filter((r,i)=>questions[i].type!=='open');
+  const correct = mc_results.filter(r=>r==='ok').length;
+  const total = mc_results.length;
+  const pct = Math.round(correct/total*100);
+  document.getElementById('doneCount').textContent = questions.length;
+  document.getElementById('pFill').style.width='100%';
+  document.getElementById('doneScore').textContent = correct+'/'+total;
+  document.getElementById('doneSub').textContent = pct+'% de opción múltiple correcto';
+  let msg;
+  if(pct>=85) msg='Muy bien. Estás listo/a para el parcial. Repasá los temas abiertos con el resumen rápido.';
+  else if(pct>=65) msg='Bien encaminado/a. Repasá los que fallaste en la pestaña Resumen rápido.';
+  else msg='Hay temas para repasar. La pestaña Resumen rápido tiene todo organizado para releer rápido.';
+  document.getElementById('doneMsg').textContent=msg;
+  document.getElementById('doneScreen').classList.add('show');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function restart(){
+  current=0; results=[]; multiSelected={};
+  document.getElementById('doneScreen').classList.remove('show');
+  buildDots();
+  renderQuestion(0);
+  updateProgress();
+}
+
+// ══════════════════════════════════════════
+// TABS / CHEAT
+// ══════════════════════════════════════════
+function showTab(t,btn){
+  document.querySelectorAll('.nav-pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tabPractica').style.display=t==='practica'?'block':'none';
+  document.getElementById('tabCheat').style.display=t==='cheat'?'block':'none';
+}
+function toggleCheat(head){
+  head.nextElementSibling.classList.toggle('open');
+  head.querySelector('.cheat-arr').classList.toggle('open');
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+buildDots();
+renderQuestion(0);
+</script>
+</body>
+</html>
