@@ -95,6 +95,37 @@ html,body{background:var(--bg);color:var(--text);font-family:'Atkinson Hyperlegi
 .next-btn:hover{opacity:.88;transform:translateY(-1px);}
 .next-btn.show{display:block;animation:fadeUp .25s ease;}
 
+/* Botón evaluar */
+.eval-btn{padding:11px 22px;background:var(--accent2);color:#12162a;border:none;border-radius:10px;font-family:inherit;font-size:0.9rem;font-weight:700;cursor:pointer;transition:opacity .15s;align-self:flex-start;}
+.eval-btn:hover{opacity:.85;}
+.eval-btn:disabled{opacity:.4;cursor:default;}
+
+/* Spinner */
+.eval-spinner{display:none;align-items:center;gap:10px;font-size:0.85rem;color:var(--muted);}
+.eval-spinner.show{display:flex;}
+.spinner-dot{width:8px;height:8px;border-radius:50%;background:var(--accent2);animation:pulse 1.2s infinite;}
+.spinner-dot:nth-child(2){animation-delay:.2s;}
+.spinner-dot:nth-child(3){animation-delay:.4s;}
+@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8);}50%{opacity:1;transform:scale(1.2);}}
+
+/* Feedback AI */
+.ai-fb{display:none;border-radius:14px;padding:18px 20px;font-size:0.9rem;line-height:1.7;animation:fadeUp .3s ease;}
+.ai-fb.show{display:block;}
+.ai-fb.ok{background:rgba(92,232,160,.1);border:1.5px solid rgba(92,232,160,.3);}
+.ai-fb.partial{background:rgba(251,191,36,.08);border:1.5px solid rgba(251,191,36,.25);}
+.ai-fb.bad{background:rgba(244,127,127,.08);border:1.5px solid rgba(244,127,127,.2);}
+.ai-fb-score{font-size:1.1rem;font-weight:700;margin-bottom:8px;}
+.ai-fb.ok .ai-fb-score{color:var(--green);}
+.ai-fb.partial .ai-fb-score{color:var(--yellow);}
+.ai-fb.bad .ai-fb-score{color:var(--red);}
+.ai-fb-text{color:var(--text);}
+.ai-fb-model{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+.ai-fb-model-label{font-size:0.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-bottom:8px;}
+.key-box-inner{font-size:0.85rem;line-height:1.7;color:var(--muted);}
+.key-box-inner strong{color:var(--text);}
+.key-box-inner ul{margin:6px 0 8px 16px;}
+.key-box-inner li{margin-bottom:4px;}
+
 .done-screen{display:none;text-align:center;padding:48px 24px;}
 .done-screen.show{display:block;animation:fadeUp .35s ease;}
 .done-big{font-size:3.8rem;font-weight:700;color:var(--accent);line-height:1;margin-bottom:8px;}
@@ -722,8 +753,16 @@ function renderQ(idx){
   }
   if(q.type==='open'){
     h+=`<textarea class="open-area" id="ta_${idx}" placeholder="Escribí tu respuesta acá..."></textarea>`;
-    h+=`<button class="reveal-btn" onclick="revealOpen(${idx})">Ver respuesta modelo</button>`;
-    h+=`<div class="key-box" id="key_${idx}">${q.hint}</div>`;
+    h+=`<button class="eval-btn" id="evalbtn_${idx}" onclick="evaluateOpen(${idx})">Evaluar mi respuesta ✦</button>`;
+    h+=`<div class="eval-spinner" id="spinner_${idx}"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div><span>Analizando tu respuesta...</span></div>`;
+    h+=`<div class="ai-fb" id="aifb_${idx}">
+      <div class="ai-fb-score" id="aifb_score_${idx}"></div>
+      <div class="ai-fb-text" id="aifb_text_${idx}"></div>
+      <div class="ai-fb-model" id="aifb_model_${idx}">
+        <div class="ai-fb-model-label">Respuesta modelo</div>
+        <div class="key-box-inner">${q.hint}</div>
+      </div>
+    </div>`;
   }
   if(q.type==='multi'){
     h+=`<div class="multi-note">Seleccioná todas las que aplican, luego confirmá.</div>`;
@@ -755,9 +794,104 @@ function answerMC(idx,chosen,correct){
   fb.className='fb-box show '+(ok?'ok':'bad');
   document.getElementById('next_'+idx).classList.add('show');
 }
-function revealOpen(idx){
-  document.getElementById('key_'+idx).classList.toggle('show');
-  if(!results[idx]){results[idx]='seen';document.getElementById('next_'+idx).classList.add('show');}
+async function evaluateOpen(idx){
+  const q=questions[idx];
+  const userAnswer=document.getElementById('ta_'+idx).value.trim();
+  if(!userAnswer){
+    const ta=document.getElementById('ta_'+idx);
+    ta.style.borderColor='var(--red)';
+    ta.placeholder='Escribí algo antes de evaluar...';
+    setTimeout(()=>{ta.style.borderColor='';},1500);
+    return;
+  }
+  // Deshabilitar botón y mostrar spinner
+  document.getElementById('evalbtn_'+idx).disabled=true;
+  document.getElementById('spinner_'+idx).classList.add('show');
+
+  const systemPrompt=`Sos un corrector de exámenes de Derecho para Ingenieros en Argentina (ITBA). 
+Tu tarea es evaluar la respuesta de un estudiante a una pregunta de desarrollo y dar feedback claro, directo y útil.
+
+CRITERIOS:
+- La respuesta debe aplicar la teoría al caso concreto, no solo enunciarla
+- Valorá la estructura lógica y la correctitud jurídica
+- Sé preciso sobre qué falta o qué está mal, con ejemplos concretos
+- El tono debe ser de tutor que ayuda, no de juez
+
+FORMATO DE RESPUESTA (siempre en este formato exacto, sin markdown extra):
+PUNTAJE: [BIEN / PARCIAL / MEJORAR]
+RESUMEN: [1-2 oraciones directas sobre la calidad general de la respuesta]
+PUNTOS FUERTES: [qué hizo bien, si hay algo]
+A MEJORAR: [qué falta o está mal, siendo específico]`;
+
+  const userMsg=`PREGUNTA: ${q.text}
+
+RESPUESTA MODELO (para tu referencia interna, no la copies en el feedback):
+${q.hint.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()}
+
+RESPUESTA DEL ESTUDIANTE:
+${userAnswer}
+
+Evaluá la respuesta del estudiante comparándola con los criterios de la respuesta modelo.`;
+
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:1000,
+        system:systemPrompt,
+        messages:[{role:'user',content:userMsg}]
+      })
+    });
+    const data=await res.json();
+    const text=data.content?.[0]?.text||'No se pudo evaluar.';
+
+    // Parsear puntaje
+    const scoreMatch=text.match(/PUNTAJE:\s*(BIEN|PARCIAL|MEJORAR)/i);
+    const score=scoreMatch?scoreMatch[1].toUpperCase():'PARCIAL';
+    const scoreMap={BIEN:'ok',PARCIAL:'partial',MEJORAR:'bad'};
+    const scoreLabel={BIEN:'✓ Muy bien',PARCIAL:'~ Parcialmente correcto',MEJORAR:'✗ Necesita mejorar'};
+
+    // Parsear secciones
+    const resumenMatch=text.match(/RESUMEN:\s*(.+?)(?=PUNTOS FUERTES:|A MEJORAR:|$)/is);
+    const fuerteMatch=text.match(/PUNTOS FUERTES:\s*(.+?)(?=A MEJORAR:|$)/is);
+    const mejorarMatch=text.match(/A MEJORAR:\s*(.+?)$/is);
+
+    const resumen=resumenMatch?resumenMatch[1].trim():'';
+    const fuerte=fuerteMatch?fuerteMatch[1].trim():'';
+    const mejorar=mejorarMatch?mejorarMatch[1].trim():'';
+
+    let fbHtml=`<div class="ai-fb-score">${scoreLabel[score]}</div>`;
+    fbHtml+=`<div class="ai-fb-text">`;
+    if(resumen) fbHtml+=`<p>${resumen}</p>`;
+    if(fuerte&&score!=='MEJORAR') fbHtml+=`<p style="margin-top:10px"><strong style="color:var(--green)">✓ Lo que hiciste bien:</strong><br>${fuerte}</p>`;
+    if(mejorar) fbHtml+=`<p style="margin-top:10px"><strong style="color:var(--yellow)">→ Qué mejorar:</strong><br>${mejorar}</p>`;
+    fbHtml+=`</div>`;
+
+    const fbEl=document.getElementById('aifb_'+idx);
+    fbEl.querySelector('.ai-fb-score').outerHTML=''; // limpiar
+    fbEl.innerHTML=fbHtml+`<div class="ai-fb-model" id="aifb_model_${idx}">
+      <div class="ai-fb-model-label">Respuesta modelo</div>
+      <div class="key-box-inner">${q.hint}</div>
+    </div>`;
+    fbEl.className='ai-fb show '+(scoreMap[score]||'partial');
+
+    results[idx]=score==='BIEN'?'ok':score==='MEJORAR'?'bad':'partial';
+    // Para los dots: partial cuenta como "seen" (amarillo no existe, usamos done para partial tb)
+    if(results[idx]==='partial') results[idx]='seen';
+
+  }catch(e){
+    const fbEl=document.getElementById('aifb_'+idx);
+    fbEl.innerHTML=`<div class="ai-fb-score">No se pudo conectar</div><div class="ai-fb-text">Revisá tu conexión. Mientras tanto podés ver la respuesta modelo abajo.</div>
+    <div class="ai-fb-model"><div class="ai-fb-model-label">Respuesta modelo</div><div class="key-box-inner">${q.hint}</div></div>`;
+    fbEl.className='ai-fb show bad';
+    results[idx]='seen';
+  }
+
+  document.getElementById('spinner_'+idx).classList.remove('show');
+  document.getElementById('next_'+idx).classList.add('show');
+  document.getElementById('ta_'+idx).disabled=true;
 }
 function toggleM(btn,idx,v){
   if(!multiSel[idx]) multiSel[idx]=new Set();
